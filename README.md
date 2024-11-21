@@ -1,0 +1,1 @@
+# Makine-renmesi-ile-Cinsiyet-i-Dil-Tespiti
