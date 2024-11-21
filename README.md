@@ -1,1 +1,1 @@
-# Makine-renmesi-ile-Cinsiyet-i-Dil-Tespiti
+# Makine-ogrenmesi-ile-Cinsiyetci-Dil-Tespiti
