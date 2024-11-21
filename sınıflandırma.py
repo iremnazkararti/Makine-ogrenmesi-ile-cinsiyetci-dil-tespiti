@@ -234,4 +234,5 @@ plt.title('Cinsiyetçi Olmayan Tweetler')
 plt.axis('off')
 
 
+
 plt.show()
