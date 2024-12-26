@@ -17,7 +17,7 @@ import nltk
 import re
 from wordcloud import WordCloud
 from imblearn.over_sampling import SMOTE
-
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 
@@ -34,7 +34,7 @@ def temizle(metin):
     metin = ' '.join([kelime for kelime in metin.split() if kelime not in stop_words])  # Stopwords'ü kaldırma
     return metin
 
-# Veri setini yükleme (relative path kullanılabilir)
+
 def veri_yukle(dosya_yolu):
     return pd.read_excel(dosya_yolu)
 
@@ -73,7 +73,7 @@ stop_words = stopwords.words('turkish')  # Türkçe stopwords listesi
 # Cinsiyetçi tweetleri seçme (Cinsiyetçi etiket == 1)
 cinsiyetci_tweetler = veri_seti[veri_seti['Cinsiyetçi'] == 1]['Temiz_Tweet']
 
-# TF-IDF uygulama, stop_words parametresine Türkçe stopwords listesini veriyoruz
+# TF-IDF uygulama, stop_words parametresine Türkçe stopwords listesi
 tfidf = TfidfVectorizer(max_features=10000, stop_words=stop_words)
 X_tfidf = tfidf.fit_transform(cinsiyetci_tweetler)
 
@@ -81,7 +81,7 @@ X_tfidf = tfidf.fit_transform(cinsiyetci_tweetler)
 # Cinsiyetçi tweetleri seçme (Cinsiyetçi etiket == 1)
 cinsiyetci_tweetler = veri_seti[veri_seti['Cinsiyetçi'] == 1]['Temiz_Tweet']
 
-# TF-IDF uygulama, stop_words parametresine Türkçe stopwords listesini veriyoruz
+# TF-IDF uygulama, stop_words parametresine Türkçe stopwords listesi
 tfidf = TfidfVectorizer(max_features=10000, stop_words=stop_words)
 X_tfidf = tfidf.fit_transform(cinsiyetci_tweetler)
 
@@ -121,16 +121,6 @@ plt.xlabel('Kelime Sıklığı')
 plt.ylabel('Kelime')
 plt.show()
 
-
-
-
-
-
-
-
-
-
-
 # TF-IDF uygulama
 tfidf = TfidfVectorizer(max_features=10000)  # Max özellik sayısı ile sınırlandırma
 X_tfidf = tfidf.fit_transform(X)
@@ -142,37 +132,61 @@ X_svd = svd.fit_transform(X_tfidf)
 # SVD sonrası negatif değerleri kontrol etme ve sıfırlama
 X_svd = np.abs(X_svd)
 
-# Eğitim ve test verisini ayırma
-X_train, X_test, y_train, y_test = train_test_split(X_svd, y, test_size=0.3, random_state=42)
 
-# SMOTE ile veri dengeleme
-smote = SMOTE(random_state=42, k_neighbors=5)  # K komşu sayısını değiştirebilirsiniz
-X_train, y_train = smote.fit_resample(X_train, y_train)
+# 3D Dağılım grafiği
+from mpl_toolkits.mplot3d import Axes3D
+
+# Grafik başlatma
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+
+# Y'yi kullanarak sınıf etiketlerine göre renkler atama
+scatter = ax.scatter(X_svd[:, 0], X_svd[:, 1], X_svd[:, 2], c=y, cmap='viridis', s=30)
+
+# Grafik başlığı ve etiketler
+ax.set_title('3D Dağılım Grafiği (SVD ile Boyut İndirgeme)')
+ax.set_xlabel('Bileşen 1')
+ax.set_ylabel('Bileşen 2')
+ax.set_zlabel('Bileşen 3')
+
+# Renkli etiketi eklemek için renk çubuğu
+cbar = plt.colorbar(scatter)
+cbar.set_label('Sınıf Etiketi (0: Non-Sexist, 1: Sexist)')
+
+# Gösterim
+plt.show()
+
+
+# Eğitim ve test verisini ayırma
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# TF-IDF uygulama (eğitim ve test setleri için)
+tfidf = TfidfVectorizer(max_features=10000, stop_words=stop_words)
+X_train_tfidf = tfidf.fit_transform(X_train)
+X_test_tfidf = tfidf.transform(X_test)
 
 # Modelleri tanımlama
 models = {
-    'SVM': SVC(C=10, kernel='rbf', random_state=42, max_iter=2000),  # SVM için kernel değiştirildi ve C değeri arttırıldı
+    'SVM': SVC(C=10, kernel='rbf', random_state=42, max_iter=2000),
     'Naive Bayes': MultinomialNB(),
     'Decision Tree': DecisionTreeClassifier(random_state=42),
     'Random Forest': RandomForestClassifier(random_state=42),
-    'Neural Network (SVD)': MLPClassifier(hidden_layer_sizes=(100,), max_iter=2000, random_state=42),  # Neural Network için max_iter arttırıldı
-    'Logistic Regression': LogisticRegression(random_state=42)  # Lojistik Regresyon modeli eklendi
+    'Neural Network': MLPClassifier(hidden_layer_sizes=(100,), max_iter=2000, random_state=42),
+    'Logistic Regression': LogisticRegression(random_state=42)
 }
-
-
 
 # Sonuçları tutmak için boş bir DataFrame oluşturuyorum
 results = []
 
 # Modelleri eğitme ve doğruluklarını hesaplama
 for model_name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    model.fit(X_train_tfidf, y_train)
+    y_pred = model.predict(X_test_tfidf)
 
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, zero_division=0)
+    recall = recall_score(y_test, y_pred, zero_division=0)
+    f1 = f1_score(y_test, y_pred, zero_division=0)
 
     results.append({
         'Model': model_name,
@@ -189,25 +203,26 @@ print(results_df)
 # Grafiksel gösterim (Doğruluk karşılaştırması)
 plt.figure(figsize=(13, 6))
 sns.barplot(x='Model', y='Doğruluk', data=results_df)
-plt.title('Modellerin Doğruluk Karşılaştırması')
+plt.title('Modellerin Doğruluk Karşılaştırması (TF-IDF ile)')
 plt.show()
 
-# Confusion Matrix görselleştirmesi için tüm matrisleri tek bir grafikte gösterme
-plt.figure(figsize=(15, 10))  # Figür boyutunu ayarla
+# Confusion Matrix görselleştirmesi
+plt.figure(figsize=(20, 10))  # Figür boyutunu ayarla
 
 for i, (model_name, model) in enumerate(models.items()):
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test_tfidf)
     cm = confusion_matrix(y_test, y_pred)
 
     plt.subplot(2, 3, i + 1)  # Alt grafik düzeni (örneğin, 2x3 grid)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Non-Sexist', 'Sexist'],
                 yticklabels=['Non-Sexist', 'Sexist'])
-    plt.title(f'{model_name} Confusion Matrix')
+    plt.title(f'{model_name} Confusion Matrix (TF-IDF ile)')
     plt.xlabel('Tahmin Edilen')
     plt.ylabel('Gerçek')
 
 plt.tight_layout()  # Alt grafiklerin çakışmaması için düzenleme
 plt.show()
+
 
 # Cinsiyetçi ve cinsiyetçi olmayan tweetlerin kelime bulutlarını oluşturma
 # Cinsiyetçi tweetler
